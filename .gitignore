@@ -1,1 +1,4 @@
 /target
+/rinut.db
+/rinut.db-shm
+/rinut.db-wal
