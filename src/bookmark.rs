@@ -58,3 +58,49 @@ fn bookmark_from_row(row: &rusqlite::Row<'_>) -> Result<Bookmark> {
         created_at: row.get(4)?,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn connection() -> Result<Connection> {
+        let connection = Connection::open_in_memory()?;
+        connection.execute_batch(
+            "CREATE TABLE bookmarks (
+                id         INTEGER PRIMARY KEY,
+                url        TEXT NOT NULL,
+                title      TEXT,
+                note       TEXT,
+                created_at TEXT NOT NULL DEFAULT 'test'
+            );",
+        )?;
+        Ok(connection)
+    }
+
+    #[test]
+    fn bookmark_crud_round_trip() -> Result<()> {
+        let connection = connection()?;
+
+        let id = stash(
+            &connection,
+            "https://example.com",
+            Some("Example"),
+            Some("demo"),
+        )?;
+        assert_eq!(id, 1);
+
+        let bookmarks = list(&connection)?;
+        assert_eq!(bookmarks.len(), 1);
+        assert_eq!(bookmarks[0].url, "https://example.com");
+
+        let bookmark = get(&connection, id)?.expect("bookmark should exist");
+        assert_eq!(bookmark.title.as_deref(), Some("Example"));
+        assert_eq!(bookmark.note.as_deref(), Some("demo"));
+
+        assert!(remove(&connection, id)?);
+        assert!(get(&connection, id)?.is_none());
+        assert!(!remove(&connection, id)?);
+
+        Ok(())
+    }
+}
