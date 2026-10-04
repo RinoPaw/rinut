@@ -168,6 +168,18 @@ $bookmarks = @(
     @{
         Url = "https://github.com/penpot/penpot"
         Topics = @("design-tool", "ui-design", "mcp")
+    },
+    @{
+        Url = "https://github.com/obra/superpowers"
+        Topics = @("agent-engineering", "developer-tools", "debugging")
+    },
+    @{
+        Url = "https://github.com/anthropics/skills/tree/main/skills/mcp-builder"
+        Topics = @("mcp", "agent-engineering", "developer-tools")
+    },
+    @{
+        Url = "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
+        Topics = @("ai-design", "design-skill", "ui-design")
     }
 )
 
