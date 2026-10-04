@@ -108,6 +108,26 @@ function Ensure-Bookmark {
     }
 }
 
+function Remove-Topic {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Url,
+        [Parameter(Mandatory = $true)]
+        [string] $Topic
+    )
+
+    $id = Find-BookmarkId -Url $Url
+    if ($null -eq $id) {
+        return
+    }
+
+    $edit = Invoke-Rinut -Arguments @(
+        "edit", $id.ToString(),
+        "--unset", "topic=$Topic"
+    )
+    Require-Success -Result $edit -Action "Removing topic=$Topic from bookmark $id"
+}
+
 $bookmarks = @(
     @{
         Url = "https://github.com/cloudflare/security-audit-skill"
@@ -151,7 +171,7 @@ $bookmarks = @(
     },
     @{
         Url = "https://github.com/microsoft/mcp-for-beginners"
-        Topics = @("mcp", "ai-agent", "protocol", "learning")
+        Topics = @("mcp", "ai-agent", "learning")
     },
     @{
         Url = "https://github.com/nexu-io/open-design"
@@ -167,11 +187,11 @@ $bookmarks = @(
     },
     @{
         Url = "https://github.com/penpot/penpot"
-        Topics = @("design-tool", "ui-design", "mcp")
+        Topics = @("design-tool", "ui-design")
     },
     @{
         Url = "https://github.com/obra/superpowers"
-        Topics = @("agent-engineering", "developer-tools", "debugging")
+        Topics = @("agent-engineering", "developer-tools")
     },
     @{
         Url = "https://github.com/anthropics/skills/tree/main/skills/mcp-builder"
@@ -191,7 +211,7 @@ $bookmarks = @(
     },
     @{
         Url = "https://github.com/datawhalechina/self-llm"
-        Topics = @("large-language-model", "developer-tools", "learning")
+        Topics = @("large-language-model", "learning")
     },
     @{
         Url = "https://github.com/datawhalechina/hello-agents"
@@ -207,8 +227,16 @@ $bookmarks = @(
     },
     @{
         Url = "https://github.com/donnemartin/system-design-primer"
-        Topics = @("system-design", "software-engineering", "learning")
+        Topics = @("system-design", "learning")
     }
+)
+
+$removedTopics = @(
+    @{ Url = "https://github.com/microsoft/mcp-for-beginners"; Topic = "protocol" },
+    @{ Url = "https://github.com/penpot/penpot"; Topic = "mcp" },
+    @{ Url = "https://github.com/obra/superpowers"; Topic = "debugging" },
+    @{ Url = "https://github.com/datawhalechina/self-llm"; Topic = "developer-tools" },
+    @{ Url = "https://github.com/donnemartin/system-design-primer"; Topic = "software-engineering" }
 )
 
 $init = Invoke-Rinut -Arguments @("init")
@@ -218,6 +246,10 @@ Ensure-TopicKey
 
 foreach ($bookmark in $bookmarks) {
     Ensure-Bookmark -Url $bookmark.Url -Topics $bookmark.Topics
+}
+
+foreach ($removedTopic in $removedTopics) {
+    Remove-Topic -Url $removedTopic.Url -Topic $removedTopic.Topic
 }
 
 Write-Host ""
