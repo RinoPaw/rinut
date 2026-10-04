@@ -196,6 +196,18 @@ $bookmarks = @(
     @{
         Url = "https://github.com/datawhalechina/hello-agents"
         Topics = @("ai-agent", "agent-engineering", "learning")
+    },
+    @{
+        Url = "https://github.com/dlvhdr/gh-dash"
+        Topics = @("developer-tools", "github", "terminal")
+    },
+    @{
+        Url = "https://github.com/zhaoxuya520/reverse-skill"
+        Topics = @("reverse-engineering", "security", "ai-agent")
+    },
+    @{
+        Url = "https://github.com/donnemartin/system-design-primer"
+        Topics = @("system-design", "software-engineering", "learning")
     }
 )
 
