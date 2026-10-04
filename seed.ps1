@@ -152,6 +152,22 @@ $bookmarks = @(
     @{
         Url = "https://github.com/microsoft/mcp-for-beginners"
         Topics = @("mcp", "ai-agent", "protocol", "learning")
+    },
+    @{
+        Url = "https://github.com/nexu-io/open-design"
+        Topics = @("ai-design", "design-tool", "ai-agent")
+    },
+    @{
+        Url = "https://github.com/VoltAgent/awesome-design-md"
+        Topics = @("design-system", "ai-design", "developer-tools")
+    },
+    @{
+        Url = "https://github.com/Nutlope/hallmark"
+        Topics = @("ai-design", "design-skill", "ui-design")
+    },
+    @{
+        Url = "https://github.com/penpot/penpot"
+        Topics = @("design-tool", "ui-design", "mcp")
     }
 )
 
