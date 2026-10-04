@@ -180,6 +180,22 @@ $bookmarks = @(
     @{
         Url = "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
         Topics = @("ai-design", "design-skill", "ui-design")
+    },
+    @{
+        Url = "https://github.com/HandsOnLLM/Hands-On-Large-Language-Models"
+        Topics = @("large-language-model", "learning")
+    },
+    @{
+        Url = "https://github.com/datawhalechina/happy-llm"
+        Topics = @("large-language-model", "learning")
+    },
+    @{
+        Url = "https://github.com/datawhalechina/self-llm"
+        Topics = @("large-language-model", "developer-tools", "learning")
+    },
+    @{
+        Url = "https://github.com/datawhalechina/hello-agents"
+        Topics = @("ai-agent", "agent-engineering", "learning")
     }
 )
 
