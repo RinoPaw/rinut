@@ -34,6 +34,16 @@ function Require-Success {
     }
 }
 
+function Test-Key {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Name
+    )
+
+    $show = Invoke-Rinut -Arguments @("key", "show", $Name)
+    return $show.ExitCode -eq 0
+}
+
 function Ensure-Key {
     param(
         [Parameter(Mandatory = $true)]
@@ -125,217 +135,239 @@ function Ensure-Value {
     Require-Success -Result $edit -Action "Setting $Key=$Value on bookmark $BookmarkId"
 }
 
-function Remove-Value {
+function Remove-All-Values {
     param(
         [Parameter(Mandatory = $true)]
         [long] $BookmarkId,
         [Parameter(Mandatory = $true)]
-        [string] $Key,
-        [Parameter(Mandatory = $true)]
-        [string] $Value
+        [string] $Key
     )
 
     $edit = Invoke-Rinut -Arguments @(
         "edit", $BookmarkId.ToString(),
-        "--unset", "$Key=$Value"
+        "--unset", $Key
     )
-    Require-Success -Result $edit -Action "Removing $Key=$Value from bookmark $BookmarkId"
+    Require-Success -Result $edit -Action "Removing all $Key values from bookmark $BookmarkId"
 }
 
 $bookmarks = @(
     @{
         Url = "https://github.com/cloudflare/security-audit-skill"
         Properties = @{
-            topic = @("ai-agent", "security", "code-review")
+            domain = @("security")
+            concept = @("ai-agent")
+            practice = @("code-review")
             kind = @("skill")
         }
     },
     @{
         Url = "https://github.com/affaan-m/ECC"
         Properties = @{
-            topic = @("ai-agent", "agent-engineering")
+            domain = @("artificial-intelligence")
+            concept = @("ai-agent")
+            practice = @("agent-engineering")
             kind = @("tool")
         }
     },
     @{
         Url = "https://github.com/alibaba/open-code-review"
         Properties = @{
-            topic = @("ai-agent", "code-review")
+            domain = @("software-engineering")
+            concept = @("ai-agent")
+            practice = @("code-review")
             kind = @("tool")
         }
     },
     @{
         Url = "https://github.com/vectorize-io/hindsight"
         Properties = @{
-            topic = @("ai-agent", "agent-memory", "ai-infrastructure")
+            domain = @("artificial-intelligence")
+            concept = @("ai-agent", "agent-memory")
             kind = @("tool")
         }
     },
     @{
         Url = "https://github.com/xai-org/x-algorithm"
         Properties = @{
-            topic = @("recommendation-system", "machine-learning", "algorithm")
+            domain = @("machine-learning")
+            concept = @("recommendation-system", "algorithm")
         }
     },
     @{
         Url = "https://github.com/jingyaogong/minimind"
         Properties = @{
-            topic = @("large-language-model")
+            domain = @("artificial-intelligence")
+            concept = @("large-language-model")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/krahets/hello-algo"
         Properties = @{
-            topic = @("algorithm", "data-structure")
+            domain = @("computer-science")
+            concept = @("algorithm", "data-structure")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/microsoft/AI-For-Beginners"
         Properties = @{
-            topic = @("artificial-intelligence")
+            domain = @("artificial-intelligence")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/microsoft/ML-For-Beginners"
         Properties = @{
-            topic = @("machine-learning")
+            domain = @("machine-learning")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/microsoft/ai-agents-for-beginners"
         Properties = @{
-            topic = @("ai-agent")
+            domain = @("artificial-intelligence")
+            concept = @("ai-agent")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/microsoft/mcp-for-beginners"
         Properties = @{
-            topic = @("mcp", "ai-agent")
+            domain = @("artificial-intelligence")
+            concept = @("mcp", "ai-agent")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/nexu-io/open-design"
         Properties = @{
-            topic = @("ai-design", "ai-agent")
+            domain = @("design")
+            concept = @("ai-design", "ai-agent")
             kind = @("tool")
         }
     },
     @{
         Url = "https://github.com/VoltAgent/awesome-design-md"
         Properties = @{
-            topic = @("design-system", "ai-design")
+            domain = @("design")
+            concept = @("design-system", "ai-design")
             kind = @("reference")
         }
     },
     @{
         Url = "https://github.com/Nutlope/hallmark"
         Properties = @{
-            topic = @("ai-design", "ui-design")
+            domain = @("design")
+            concept = @("ai-design", "ui-design")
             kind = @("skill")
         }
     },
     @{
         Url = "https://github.com/penpot/penpot"
         Properties = @{
-            topic = @("ui-design")
+            domain = @("design")
+            concept = @("ui-design")
             kind = @("tool")
         }
     },
     @{
         Url = "https://github.com/obra/superpowers"
         Properties = @{
-            topic = @("agent-engineering")
+            domain = @("software-engineering")
+            concept = @("ai-agent")
+            practice = @("agent-engineering")
             kind = @("skill")
         }
     },
     @{
         Url = "https://github.com/anthropics/skills/tree/main/skills/mcp-builder"
         Properties = @{
-            topic = @("mcp", "agent-engineering")
+            domain = @("artificial-intelligence")
+            concept = @("mcp", "ai-agent")
+            practice = @("agent-engineering")
             kind = @("skill")
         }
     },
     @{
         Url = "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
         Properties = @{
-            topic = @("ai-design", "ui-design")
+            domain = @("design")
+            concept = @("ai-design", "ui-design")
             kind = @("skill")
         }
     },
     @{
         Url = "https://github.com/HandsOnLLM/Hands-On-Large-Language-Models"
         Properties = @{
-            topic = @("large-language-model")
+            domain = @("artificial-intelligence")
+            concept = @("large-language-model")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/datawhalechina/happy-llm"
         Properties = @{
-            topic = @("large-language-model")
+            domain = @("artificial-intelligence")
+            concept = @("large-language-model")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/datawhalechina/self-llm"
         Properties = @{
-            topic = @("large-language-model")
+            domain = @("artificial-intelligence")
+            concept = @("large-language-model")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/datawhalechina/hello-agents"
         Properties = @{
-            topic = @("ai-agent", "agent-engineering")
+            domain = @("artificial-intelligence")
+            concept = @("ai-agent")
+            practice = @("agent-engineering")
             purpose = @("learning")
         }
     },
     @{
         Url = "https://github.com/dlvhdr/gh-dash"
         Properties = @{
-            topic = @("github")
+            platform = @("github")
             kind = @("tool")
         }
     },
     @{
         Url = "https://github.com/zhaoxuya520/reverse-skill"
         Properties = @{
-            topic = @("reverse-engineering", "security", "ai-agent")
+            domain = @("security")
+            concept = @("ai-agent")
+            practice = @("reverse-engineering")
             kind = @("skill")
         }
     },
     @{
         Url = "https://github.com/donnemartin/system-design-primer"
         Properties = @{
-            topic = @("system-design")
+            domain = @("software-engineering")
+            practice = @("system-design")
             purpose = @("learning")
             kind = @("reference")
         }
     }
 )
 
-# Values that used to live in topic but now belong to another facet or were too noisy.
-$obsoleteTopicValues = @(
-    "learning",
-    "developer-tools",
-    "design-tool",
-    "design-skill",
-    "terminal",
-    "memory"
-)
-
 $init = Invoke-Rinut -Arguments @("init")
 Require-Success -Result $init -Action "Initializing Rinut"
 
-Ensure-Key -Name "topic"
+Ensure-Key -Name "domain"
+Ensure-Key -Name "concept"
+Ensure-Key -Name "practice"
+Ensure-Key -Name "platform"
 Ensure-Key -Name "purpose"
 Ensure-Key -Name "kind"
+
+$legacyTopicExists = Test-Key -Name "topic"
 
 foreach ($bookmark in $bookmarks) {
     $id = Ensure-Bookmark -Url $bookmark.Url
@@ -346,14 +378,14 @@ foreach ($bookmark in $bookmarks) {
         }
     }
 
-    foreach ($value in $obsoleteTopicValues) {
-        Remove-Value -BookmarkId $id -Key "topic" -Value $value
+    if ($legacyTopicExists) {
+        Remove-All-Values -BookmarkId $id -Key "topic"
     }
+}
 
-    # minimind used to carry a broad parent-like topic that adds little retrieval value.
-    if ($bookmark.Url -eq "https://github.com/jingyaogong/minimind") {
-        Remove-Value -BookmarkId $id -Key "topic" -Value "machine-learning"
-    }
+if ($legacyTopicExists) {
+    Write-Host "Legacy key 'topic' is no longer used by seeded bookmarks."
+    Write-Host "It is kept to avoid deleting topic data from bookmarks outside this seed."
 }
 
 Write-Host ""
