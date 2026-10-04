@@ -136,6 +136,22 @@ $bookmarks = @(
     @{
         Url = "https://github.com/krahets/hello-algo"
         Topics = @("algorithm", "data-structure", "learning")
+    },
+    @{
+        Url = "https://github.com/microsoft/AI-For-Beginners"
+        Topics = @("artificial-intelligence", "learning")
+    },
+    @{
+        Url = "https://github.com/microsoft/ML-For-Beginners"
+        Topics = @("machine-learning", "learning")
+    },
+    @{
+        Url = "https://github.com/microsoft/ai-agents-for-beginners"
+        Topics = @("ai-agent", "learning")
+    },
+    @{
+        Url = "https://github.com/microsoft/mcp-for-beginners"
+        Topics = @("mcp", "ai-agent", "protocol", "learning")
     }
 )
 
