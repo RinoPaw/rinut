@@ -103,7 +103,6 @@ pub(crate) fn migrate(connection: &Connection) -> SqlResult<()> {
          );
 
          CREATE INDEX IF NOT EXISTS bookmark_tags_tag_id ON bookmark_tags(tag_id);
-         CREATE INDEX IF NOT EXISTS tag_edges_child_id ON tag_edges(child_id);
 
          CREATE TRIGGER IF NOT EXISTS tag_edge_no_cycle
          BEFORE INSERT ON tag_edges
@@ -125,6 +124,18 @@ pub(crate) fn migrate(connection: &Connection) -> SqlResult<()> {
     if legacy_schema {
         migrate_legacy_schema(connection)?;
     }
+
+    connection.execute_batch(
+        "DELETE FROM tag_edges
+         WHERE rowid NOT IN (
+             SELECT MIN(rowid)
+             FROM tag_edges
+             GROUP BY child_id
+         );
+
+         DROP INDEX IF EXISTS tag_edges_child_id;
+         CREATE UNIQUE INDEX IF NOT EXISTS tag_edges_one_parent ON tag_edges(child_id);",
+    )?;
 
     Ok(())
 }
@@ -275,6 +286,45 @@ mod tests {
             |row| row.get(0),
         )?;
         assert_eq!(assigned_after_second_migration, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn existing_multiple_parents_keep_the_earliest_edge() -> SqlResult<()> {
+        let connection = Connection::open_in_memory()?;
+        connection.execute_batch(
+            "CREATE TABLE tags (
+                 id INTEGER PRIMARY KEY,
+                 name TEXT NOT NULL UNIQUE
+             );
+             CREATE TABLE tag_edges (
+                 parent_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                 child_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                 PRIMARY KEY (parent_id, child_id),
+                 CHECK (parent_id <> child_id)
+             );
+             INSERT INTO tags (id, name) VALUES
+                 (1, 'first-parent'),
+                 (2, 'second-parent'),
+                 (3, 'child');
+             INSERT INTO tag_edges (parent_id, child_id) VALUES (1, 3);
+             INSERT INTO tag_edges (parent_id, child_id) VALUES (2, 3);",
+        )?;
+
+        migrate(&connection)?;
+
+        let parent_id: i64 = connection.query_row(
+            "SELECT parent_id FROM tag_edges WHERE child_id = 3",
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(parent_id, 1);
+        assert!(connection
+            .execute(
+                "INSERT INTO tag_edges (parent_id, child_id) VALUES (2, 3)",
+                [],
+            )
+            .is_err());
         Ok(())
     }
 }

@@ -215,7 +215,6 @@ $hierarchy = @(
     @("design", "ai-design"),
     @("design", "ui-design"),
     @("design", "design-system"),
-    @("AI", "ai-design"),
     @("software-eng", "system-design"),
     @("system-design", "arch-diagram"),
     @("software-eng", "code-review"),

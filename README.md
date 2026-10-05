@@ -2,7 +2,7 @@
 
 Rinut is a local-first, programmable bookmark manager.
 
-The current milestone is a small local CLI backed by SQLite. A bookmark has a URL and an unordered set of tags. Tags are global entities and can form a DAG for broader/narrower relationships.
+The current milestone is a small local CLI backed by SQLite. A bookmark has a URL and an unordered set of tags. Tags are global entities and form a forest for broader/narrower relationships.
 
 ## Commands
 
@@ -34,7 +34,7 @@ rinut tag tree
 
 `+TAG` requires the bookmark to have that tag or one of its descendants. Multiple positive selectors use AND semantics. `-TAG` excludes bookmarks with that tag or one of its descendants.
 
-Tags may be assigned whether or not they have children. `tag link` creates a broader -> narrower relationship and rejects cycles. A tag may have multiple parents.
+Tags may be assigned whether or not they have children. `tag link` creates a broader -> narrower relationship and rejects cycles. Each tag can have at most one parent. To reparent a tag, unlink its current parent first.
 
 `edit --tag` requires the tag to exist. Use `tag add` to extend the vocabulary explicitly; this keeps typos from silently creating tags.
 
@@ -51,6 +51,8 @@ Opening an older database automatically performs a one-time migration:
 - the legacy property tables are removed after a successful migration.
 
 If the same value existed under more than one old key, it becomes one global tag.
+
+Databases created by the earlier DAG-based tag model are also normalized automatically. If a tag already has multiple parents, Rinut keeps the earliest established parent edge and removes the others before enforcing the one-parent rule.
 
 ## Database location
 

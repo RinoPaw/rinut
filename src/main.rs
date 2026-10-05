@@ -106,14 +106,10 @@ fn run_tag_command(
             let item = tag::get(connection, &name)?
                 .ok_or_else(|| not_found(format!("tag '{name}' not found")))?;
             println!("Name: {}", item.name);
-            let parents = tag::parents(connection, item.id)?;
-            let children = tag::children(connection, item.id)?;
-            if !parents.is_empty() {
-                println!("Parents:");
-                for parent in parents {
-                    println!("  {parent}");
-                }
+            if let Some(parent) = tag::parent(connection, item.id)? {
+                println!("Parent: {parent}");
             }
+            let children = tag::children(connection, item.id)?;
             if !children.is_empty() {
                 println!("Children:");
                 for child in children {

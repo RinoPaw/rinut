@@ -111,6 +111,28 @@ pub fn link(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let parent = require(conn, parent)?;
     let child = require(conn, child)?;
+
+    let existing_parent = conn
+        .query_row(
+            "SELECT p.name
+             FROM tag_edges e
+             JOIN tags p ON p.id = e.parent_id
+             WHERE e.child_id = ?1",
+            [child.id],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()?;
+
+    if let Some(existing_parent) = existing_parent {
+        if existing_parent == parent.name {
+            return Ok(());
+        }
+        return Err(invalid_input(format!(
+            "tag '{}' already has parent '{}'; unlink it before linking to '{}'",
+            child.name, existing_parent, parent.name
+        )));
+    }
+
     if parent.id == child.id || reachable(conn, child.id, parent.id)? {
         return Err(invalid_input(format!(
             "linking '{}' -> '{}' would create a cycle",
@@ -118,7 +140,7 @@ pub fn link(
         )));
     }
     conn.execute(
-        "INSERT OR IGNORE INTO tag_edges (parent_id, child_id) VALUES (?1, ?2)",
+        "INSERT INTO tag_edges (parent_id, child_id) VALUES (?1, ?2)",
         params![parent.id, child.id],
     )?;
     Ok(())
@@ -137,12 +159,28 @@ pub fn unlink(
     )? > 0)
 }
 
-pub fn parents(conn: &Connection, tag_id: i64) -> rusqlite::Result<Vec<String>> {
-    relationship_names(conn, tag_id, true)
+pub fn parent(conn: &Connection, tag_id: i64) -> rusqlite::Result<Option<String>> {
+    conn.query_row(
+        "SELECT t.name
+         FROM tag_edges e
+         JOIN tags t ON t.id = e.parent_id
+         WHERE e.child_id = ?1",
+        [tag_id],
+        |row| row.get(0),
+    )
+    .optional()
 }
 
 pub fn children(conn: &Connection, tag_id: i64) -> rusqlite::Result<Vec<String>> {
-    relationship_names(conn, tag_id, false)
+    let mut statement = conn.prepare(
+        "SELECT t.name
+         FROM tag_edges e
+         JOIN tags t ON t.id = e.child_id
+         WHERE e.parent_id = ?1
+         ORDER BY t.name",
+    )?;
+    let rows = statement.query_map([tag_id], |row| row.get(0))?;
+    rows.collect()
 }
 
 pub fn tree_lines(conn: &Connection) -> rusqlite::Result<Vec<String>> {
@@ -261,21 +299,6 @@ fn reachable(conn: &Connection, from: i64, target: i64) -> rusqlite::Result<bool
     )
 }
 
-fn relationship_names(
-    conn: &Connection,
-    tag_id: i64,
-    parents: bool,
-) -> rusqlite::Result<Vec<String>> {
-    let sql = if parents {
-        "SELECT t.name FROM tag_edges e JOIN tags t ON t.id = e.parent_id WHERE e.child_id = ?1 ORDER BY t.name"
-    } else {
-        "SELECT t.name FROM tag_edges e JOIN tags t ON t.id = e.child_id WHERE e.parent_id = ?1 ORDER BY t.name"
-    };
-    let mut statement = conn.prepare(sql)?;
-    let rows = statement.query_map([tag_id], |row| row.get(0))?;
-    rows.collect()
-}
-
 fn append_tree_lines(
     id: i64,
     depth: usize,
@@ -371,6 +394,26 @@ mod tests {
         link(&connection, "a", "b")?;
         link(&connection, "b", "c")?;
         assert!(link(&connection, "c", "a").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn a_tag_can_have_at_most_one_parent() -> Result<(), Box<dyn std::error::Error>> {
+        let connection = crate::db::memory()?;
+        add(&connection, "first")?;
+        add(&connection, "second")?;
+        add(&connection, "child")?;
+
+        link(&connection, "first", "child")?;
+        link(&connection, "first", "child")?;
+        assert!(link(&connection, "second", "child").is_err());
+
+        let child = get(&connection, "child")?.expect("child should exist");
+        assert_eq!(parent(&connection, child.id)?, Some("first".into()));
+
+        assert!(unlink(&connection, "first", "child")?);
+        link(&connection, "second", "child")?;
+        assert_eq!(parent(&connection, child.id)?, Some("second".into()));
         Ok(())
     }
 }
