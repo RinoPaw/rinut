@@ -429,6 +429,30 @@ $bookmarks = @(
             purpose = @("learning")
             kind = @("course")
         }
+    },
+    @{
+        Url = "https://zh.zlibraryg.ru/"
+        Properties = @{
+            domain = @("publishing")
+            concept = @("digital-library", "shadow-library")
+            kind = @("service")
+        }
+    },
+    @{
+        Url = "https://libgen.ad/"
+        Properties = @{
+            domain = @("publishing")
+            concept = @("digital-library", "shadow-library")
+            kind = @("service")
+        }
+    },
+    @{
+        Url = "https://www.shuge.org/"
+        Properties = @{
+            domain = @("humanities")
+            concept = @("digital-library", "public-domain")
+            kind = @("reference")
+        }
     }
 )
 
