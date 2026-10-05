@@ -38,6 +38,8 @@ Tags may be assigned whether or not they have children. `tag link` creates a bro
 
 `edit --tag` requires the tag to exist. Use `tag add` to extend the vocabulary explicitly; this keeps typos from silently creating tags.
 
+Tag names should generally stay at 15 characters or fewer, counting separators such as `-`. Prefer familiar abbreviations such as `AI`, `ML`, `LLM`, `CS`, and `CG` when they keep names clear. This is a naming guideline rather than a CLI length restriction.
+
 ## Migration from the key model
 
 Opening an older database automatically performs a one-time migration:
