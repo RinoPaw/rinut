@@ -354,6 +354,31 @@ $bookmarks = @(
             purpose = @("learning")
             kind = @("reference")
         }
+    },
+    @{
+        Url = "https://github.com/bilawalsidhu/gods-eye-view"
+        Properties = @{
+            domain = @("computer-graphics")
+            concept = @("geospatial-visualization")
+            kind = @("tool")
+        }
+    },
+    @{
+        Url = "https://github.com/tt-a1i/archify"
+        Properties = @{
+            domain = @("software-engineering")
+            concept = @("architecture-diagram")
+            practice = @("system-design")
+            kind = @("skill")
+        }
+    },
+    @{
+        Url = "https://github.com/mattpocock/skills"
+        Properties = @{
+            domain = @("software-engineering")
+            practice = @("agent-engineering")
+            kind = @("skill")
+        }
     }
 )
 
