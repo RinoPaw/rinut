@@ -204,7 +204,28 @@ $hierarchy = @(
     @("AI", "ML"),
     @("CS", "software-eng"),
     @("CS", "CG"),
-    @("CS", "security")
+    @("CS", "security"),
+    @("CS", "algorithm"),
+    @("CS", "data-structure"),
+    @("CS", "programming"),
+    @("AI", "ai-agent"),
+    @("AI", "LLM"),
+    @("ML", "recommender"),
+    @("ai-agent", "agent-memory"),
+    @("design", "ai-design"),
+    @("design", "ui-design"),
+    @("design", "design-system"),
+    @("AI", "ai-design"),
+    @("software-eng", "system-design"),
+    @("system-design", "arch-diagram"),
+    @("software-eng", "code-review"),
+    @("software-eng", "web-development"),
+    @("security", "reverse-eng"),
+    @("CG", "3DGS"),
+    @("CG", "gpu-driven"),
+    @("CG", "geo-viz"),
+    @("community", "dev-community"),
+    @("digital-library", "shadow-library")
 )
 
 $init = Invoke-Rinut -Arguments @("init")
