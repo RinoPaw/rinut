@@ -59,6 +59,27 @@ function Ensure-Tag {
     Write-Host "Created tag: $Name"
 }
 
+function Rename-TagIfNeeded {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $OldName,
+        [Parameter(Mandatory = $true)]
+        [string] $NewName
+    )
+
+    if (-not (Test-Tag -Name $OldName)) {
+        return
+    }
+
+    if (Test-Tag -Name $NewName) {
+        throw "Cannot rename '$OldName' to '$NewName' because both tags already exist."
+    }
+
+    $edit = Invoke-Rinut -Arguments @("tag", "edit", $OldName, "--name", $NewName)
+    Require-Success -Result $edit -Action "Renaming tag '$OldName' to '$NewName'"
+    Write-Host "Renamed tag: $OldName -> $NewName"
+}
+
 function Find-BookmarkId {
     param(
         [Parameter(Mandatory = $true)]
@@ -117,59 +138,81 @@ function Ensure-BookmarkTag {
 
 $bookmarks = @(
     @{ Url = "https://github.com/cloudflare/security-audit-skill"; Tags = @("security", "ai-agent", "code-review", "skill") },
-    @{ Url = "https://github.com/affaan-m/ECC"; Tags = @("artificial-intelligence", "ai-agent", "agent-engineering", "tool") },
-    @{ Url = "https://github.com/alibaba/open-code-review"; Tags = @("software-engineering", "ai-agent", "code-review", "tool") },
-    @{ Url = "https://github.com/vectorize-io/hindsight"; Tags = @("artificial-intelligence", "ai-agent", "agent-memory", "tool") },
-    @{ Url = "https://github.com/xai-org/x-algorithm"; Tags = @("machine-learning", "recommendation-system", "algorithm") },
-    @{ Url = "https://github.com/jingyaogong/minimind"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
-    @{ Url = "https://github.com/krahets/hello-algo"; Tags = @("computer-science", "algorithm", "data-structure", "learning") },
-    @{ Url = "https://github.com/microsoft/AI-For-Beginners"; Tags = @("artificial-intelligence", "learning") },
-    @{ Url = "https://github.com/microsoft/ML-For-Beginners"; Tags = @("machine-learning", "learning") },
-    @{ Url = "https://github.com/microsoft/ai-agents-for-beginners"; Tags = @("artificial-intelligence", "ai-agent", "learning") },
-    @{ Url = "https://github.com/microsoft/mcp-for-beginners"; Tags = @("artificial-intelligence", "mcp", "ai-agent", "learning") },
+    @{ Url = "https://github.com/affaan-m/ECC"; Tags = @("AI", "ai-agent", "agent-eng", "tool") },
+    @{ Url = "https://github.com/alibaba/open-code-review"; Tags = @("software-eng", "ai-agent", "code-review", "tool") },
+    @{ Url = "https://github.com/vectorize-io/hindsight"; Tags = @("AI", "ai-agent", "agent-memory", "tool") },
+    @{ Url = "https://github.com/xai-org/x-algorithm"; Tags = @("ML", "recommender", "algorithm") },
+    @{ Url = "https://github.com/jingyaogong/minimind"; Tags = @("AI", "LLM", "learning") },
+    @{ Url = "https://github.com/krahets/hello-algo"; Tags = @("CS", "algorithm", "data-structure", "learning") },
+    @{ Url = "https://github.com/microsoft/AI-For-Beginners"; Tags = @("AI", "learning") },
+    @{ Url = "https://github.com/microsoft/ML-For-Beginners"; Tags = @("ML", "learning") },
+    @{ Url = "https://github.com/microsoft/ai-agents-for-beginners"; Tags = @("AI", "ai-agent", "learning") },
+    @{ Url = "https://github.com/microsoft/mcp-for-beginners"; Tags = @("AI", "mcp", "ai-agent", "learning") },
     @{ Url = "https://github.com/nexu-io/open-design"; Tags = @("design", "ai-design", "ai-agent", "tool") },
     @{ Url = "https://github.com/VoltAgent/awesome-design-md"; Tags = @("design", "design-system", "ai-design", "reference") },
     @{ Url = "https://github.com/Nutlope/hallmark"; Tags = @("design", "ai-design", "ui-design", "skill") },
     @{ Url = "https://github.com/penpot/penpot"; Tags = @("design", "ui-design", "tool") },
-    @{ Url = "https://github.com/obra/superpowers"; Tags = @("software-engineering", "ai-agent", "agent-engineering", "skill") },
-    @{ Url = "https://github.com/anthropics/skills/tree/main/skills/mcp-builder"; Tags = @("artificial-intelligence", "mcp", "ai-agent", "agent-engineering", "skill") },
+    @{ Url = "https://github.com/obra/superpowers"; Tags = @("software-eng", "ai-agent", "agent-eng", "skill") },
+    @{ Url = "https://github.com/anthropics/skills/tree/main/skills/mcp-builder"; Tags = @("AI", "mcp", "ai-agent", "agent-eng", "skill") },
     @{ Url = "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"; Tags = @("design", "ai-design", "ui-design", "skill") },
-    @{ Url = "https://github.com/HandsOnLLM/Hands-On-Large-Language-Models"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
-    @{ Url = "https://github.com/datawhalechina/happy-llm"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
-    @{ Url = "https://github.com/datawhalechina/self-llm"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
-    @{ Url = "https://github.com/datawhalechina/hello-agents"; Tags = @("artificial-intelligence", "ai-agent", "agent-engineering", "learning") },
+    @{ Url = "https://github.com/HandsOnLLM/Hands-On-Large-Language-Models"; Tags = @("AI", "LLM", "learning") },
+    @{ Url = "https://github.com/datawhalechina/happy-llm"; Tags = @("AI", "LLM", "learning") },
+    @{ Url = "https://github.com/datawhalechina/self-llm"; Tags = @("AI", "LLM", "learning") },
+    @{ Url = "https://github.com/datawhalechina/hello-agents"; Tags = @("AI", "ai-agent", "agent-eng", "learning") },
     @{ Url = "https://github.com/dlvhdr/gh-dash"; Tags = @("github", "tool") },
-    @{ Url = "https://github.com/zhaoxuya520/reverse-skill"; Tags = @("security", "ai-agent", "reverse-engineering", "skill") },
-    @{ Url = "https://github.com/donnemartin/system-design-primer"; Tags = @("software-engineering", "system-design", "learning", "reference") },
-    @{ Url = "https://github.com/bilawalsidhu/gods-eye-view"; Tags = @("computer-graphics", "geospatial-visualization", "tool") },
-    @{ Url = "https://github.com/tt-a1i/archify"; Tags = @("software-engineering", "architecture-diagram", "system-design", "skill") },
-    @{ Url = "https://github.com/mattpocock/skills"; Tags = @("software-engineering", "agent-engineering", "skill") },
-    @{ Url = "https://github.com/PanosK92/SpartanEngine"; Tags = @("computer-graphics", "game-engine", "gpu-driven-rendering", "learning", "reference") },
-    @{ Url = "https://github.com/MrNeRF/LichtFeld-Studio"; Tags = @("computer-graphics", "gaussian-splatting", "3d-reconstruction", "tool") },
-    @{ Url = "https://github.com/CyC2018/CS-Notes"; Tags = @("computer-science", "learning", "reference") },
-    @{ Url = "https://github.com/nilbuild/developer-roadmap"; Tags = @("software-engineering", "learning", "reference") },
-    @{ Url = "https://github.com/codecrafters-io/build-your-own-x"; Tags = @("computer-science", "learning", "reference") },
-    @{ Url = "https://github.com/freeCodeCamp/freeCodeCamp"; Tags = @("software-engineering", "web-development", "learning", "course") },
+    @{ Url = "https://github.com/zhaoxuya520/reverse-skill"; Tags = @("security", "ai-agent", "reverse-eng", "skill") },
+    @{ Url = "https://github.com/donnemartin/system-design-primer"; Tags = @("software-eng", "system-design", "learning", "reference") },
+    @{ Url = "https://github.com/bilawalsidhu/gods-eye-view"; Tags = @("CG", "geo-viz", "tool") },
+    @{ Url = "https://github.com/tt-a1i/archify"; Tags = @("software-eng", "arch-diagram", "system-design", "skill") },
+    @{ Url = "https://github.com/mattpocock/skills"; Tags = @("software-eng", "agent-eng", "skill") },
+    @{ Url = "https://github.com/PanosK92/SpartanEngine"; Tags = @("CG", "game-engine", "gpu-driven", "learning", "reference") },
+    @{ Url = "https://github.com/MrNeRF/LichtFeld-Studio"; Tags = @("CG", "3DGS", "3d-recon", "tool") },
+    @{ Url = "https://github.com/CyC2018/CS-Notes"; Tags = @("CS", "learning", "reference") },
+    @{ Url = "https://github.com/nilbuild/developer-roadmap"; Tags = @("software-eng", "learning", "reference") },
+    @{ Url = "https://github.com/codecrafters-io/build-your-own-x"; Tags = @("CS", "learning", "reference") },
+    @{ Url = "https://github.com/freeCodeCamp/freeCodeCamp"; Tags = @("software-eng", "web-development", "learning", "course") },
     @{ Url = "https://zh.zlibraryg.ru/"; Tags = @("publishing", "digital-library", "shadow-library", "service") },
     @{ Url = "https://libgen.ad/"; Tags = @("publishing", "digital-library", "shadow-library", "service") },
     @{ Url = "https://www.shuge.org/"; Tags = @("humanities", "digital-library", "public-domain", "reference") },
     @{ Url = "https://news.ycombinator.com/"; Tags = @("technology", "technology-news", "community") },
-    @{ Url = "https://www.infoq.cn/"; Tags = @("software-engineering", "technology-news", "publication") },
-    @{ Url = "https://stackoverflow.com/"; Tags = @("software-engineering", "programming", "community", "reference") },
-    @{ Url = "https://www.v2ex.com/"; Tags = @("technology", "developer-community", "community") }
+    @{ Url = "https://www.infoq.cn/"; Tags = @("software-eng", "technology-news", "publication") },
+    @{ Url = "https://stackoverflow.com/"; Tags = @("software-eng", "programming", "community", "reference") },
+    @{ Url = "https://www.v2ex.com/"; Tags = @("technology", "dev-community", "community") }
+)
+
+$renames = @(
+    @("artificial-intelligence", "AI"),
+    @("machine-learning", "ML"),
+    @("large-language-model", "LLM"),
+    @("computer-science", "CS"),
+    @("computer-graphics", "CG"),
+    @("software-engineering", "software-eng"),
+    @("agent-engineering", "agent-eng"),
+    @("reverse-engineering", "reverse-eng"),
+    @("recommendation-system", "recommender"),
+    @("architecture-diagram", "arch-diagram"),
+    @("developer-community", "dev-community"),
+    @("geospatial-visualization", "geo-viz"),
+    @("gpu-driven-rendering", "gpu-driven"),
+    @("gaussian-splatting", "3DGS"),
+    @("3d-reconstruction", "3d-recon")
 )
 
 $hierarchy = @(
-    @("technology", "computer-science"),
-    @("computer-science", "artificial-intelligence"),
-    @("artificial-intelligence", "machine-learning"),
-    @("computer-science", "software-engineering"),
-    @("computer-science", "computer-graphics"),
-    @("computer-science", "security")
+    @("technology", "CS"),
+    @("CS", "AI"),
+    @("AI", "ML"),
+    @("CS", "software-eng"),
+    @("CS", "CG"),
+    @("CS", "security")
 )
 
 $init = Invoke-Rinut -Arguments @("init")
 Require-Success -Result $init -Action "Initializing Rinut"
+
+foreach ($rename in $renames) {
+    Rename-TagIfNeeded -OldName $rename[0] -NewName $rename[1]
+}
 
 $allTags = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 foreach ($bookmark in $bookmarks) {
@@ -180,6 +223,12 @@ foreach ($bookmark in $bookmarks) {
 foreach ($edge in $hierarchy) {
     [void] $allTags.Add($edge[0])
     [void] $allTags.Add($edge[1])
+}
+
+foreach ($tag in $allTags) {
+    if ($tag.Length -gt 15) {
+        throw "Seed tag '$tag' exceeds the 15-character naming guideline."
+    }
 }
 
 foreach ($tag in ($allTags | Sort-Object)) {
