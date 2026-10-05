@@ -396,6 +396,39 @@ $bookmarks = @(
             concept = @("gaussian-splatting", "3d-reconstruction")
             kind = @("tool")
         }
+    },
+    @{
+        Url = "https://github.com/CyC2018/CS-Notes"
+        Properties = @{
+            domain = @("computer-science")
+            purpose = @("learning")
+            kind = @("reference")
+        }
+    },
+    @{
+        Url = "https://github.com/nilbuild/developer-roadmap"
+        Properties = @{
+            domain = @("software-engineering")
+            purpose = @("learning")
+            kind = @("reference")
+        }
+    },
+    @{
+        Url = "https://github.com/codecrafters-io/build-your-own-x"
+        Properties = @{
+            domain = @("computer-science")
+            purpose = @("learning")
+            kind = @("reference")
+        }
+    },
+    @{
+        Url = "https://github.com/freeCodeCamp/freeCodeCamp"
+        Properties = @{
+            domain = @("software-engineering")
+            concept = @("web-development")
+            purpose = @("learning")
+            kind = @("course")
+        }
     }
 )
 
