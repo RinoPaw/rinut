@@ -379,6 +379,23 @@ $bookmarks = @(
             practice = @("agent-engineering")
             kind = @("skill")
         }
+    },
+    @{
+        Url = "https://github.com/PanosK92/SpartanEngine"
+        Properties = @{
+            domain = @("computer-graphics")
+            concept = @("game-engine", "gpu-driven-rendering")
+            purpose = @("learning")
+            kind = @("reference")
+        }
+    },
+    @{
+        Url = "https://github.com/MrNeRF/LichtFeld-Studio"
+        Properties = @{
+            domain = @("computer-graphics")
+            concept = @("gaussian-splatting", "3d-reconstruction")
+            kind = @("tool")
+        }
     }
 )
 
