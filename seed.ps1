@@ -453,6 +453,38 @@ $bookmarks = @(
             concept = @("digital-library", "public-domain")
             kind = @("reference")
         }
+    },
+    @{
+        Url = "https://news.ycombinator.com/"
+        Properties = @{
+            domain = @("technology")
+            concept = @("technology-news")
+            kind = @("community")
+        }
+    },
+    @{
+        Url = "https://www.infoq.cn/"
+        Properties = @{
+            domain = @("software-engineering")
+            concept = @("technology-news")
+            kind = @("publication")
+        }
+    },
+    @{
+        Url = "https://stackoverflow.com/"
+        Properties = @{
+            domain = @("software-engineering")
+            concept = @("programming")
+            kind = @("community", "reference")
+        }
+    },
+    @{
+        Url = "https://www.v2ex.com/"
+        Properties = @{
+            domain = @("technology")
+            concept = @("developer-community")
+            kind = @("community")
+        }
     }
 )
 
