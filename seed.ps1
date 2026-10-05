@@ -34,44 +34,29 @@ function Require-Success {
     }
 }
 
-function Test-Key {
+function Test-Tag {
     param(
         [Parameter(Mandatory = $true)]
         [string] $Name
     )
 
-    $show = Invoke-Rinut -Arguments @("key", "show", $Name)
+    $show = Invoke-Rinut -Arguments @("tag", "show", $Name)
     return $show.ExitCode -eq 0
 }
 
-function Ensure-Key {
+function Ensure-Tag {
     param(
         [Parameter(Mandatory = $true)]
-        [string] $Name,
-        [string] $Type = "taxonomy",
-        [string] $Cardinality = "multi"
+        [string] $Name
     )
 
-    $show = Invoke-Rinut -Arguments @("key", "show", $Name)
-
-    if ($show.ExitCode -ne 0) {
-        $add = Invoke-Rinut -Arguments @(
-            "key", "add", $Name,
-            "--type", $Type,
-            "--cardinality", $Cardinality
-        )
-        Require-Success -Result $add -Action "Creating key '$Name'"
-        Write-Host "Created key: $Name ($Type, $Cardinality)"
+    if (Test-Tag -Name $Name) {
         return
     }
 
-    $text = $show.Output -join "`n"
-    $typePattern = "(?m)^Type:\s+$([regex]::Escape($Type))\s*$"
-    $cardinalityPattern = "(?m)^Cardinality:\s+$([regex]::Escape($Cardinality))\s*$"
-
-    if ($text -notmatch $typePattern -or $text -notmatch $cardinalityPattern) {
-        throw "Existing key '$Name' must be $Type + $Cardinality before this seed can run."
-    }
+    $add = Invoke-Rinut -Arguments @("tag", "add", $Name)
+    Require-Success -Result $add -Action "Creating tag '$Name'"
+    Write-Host "Created tag: $Name"
 }
 
 function Find-BookmarkId {
@@ -118,405 +103,99 @@ function Ensure-Bookmark {
     return $id
 }
 
-function Ensure-Value {
+function Ensure-BookmarkTag {
     param(
         [Parameter(Mandatory = $true)]
         [long] $BookmarkId,
         [Parameter(Mandatory = $true)]
-        [string] $Key,
-        [Parameter(Mandatory = $true)]
-        [string] $Value
+        [string] $Tag
     )
 
-    $edit = Invoke-Rinut -Arguments @(
-        "edit", $BookmarkId.ToString(),
-        "--set", "$Key=$Value"
-    )
-    Require-Success -Result $edit -Action "Setting $Key=$Value on bookmark $BookmarkId"
-}
-
-function Remove-All-Values {
-    param(
-        [Parameter(Mandatory = $true)]
-        [long] $BookmarkId,
-        [Parameter(Mandatory = $true)]
-        [string] $Key
-    )
-
-    $edit = Invoke-Rinut -Arguments @(
-        "edit", $BookmarkId.ToString(),
-        "--unset", $Key
-    )
-    Require-Success -Result $edit -Action "Removing all $Key values from bookmark $BookmarkId"
+    $edit = Invoke-Rinut -Arguments @("edit", $BookmarkId.ToString(), "--tag", $Tag)
+    Require-Success -Result $edit -Action "Tagging bookmark $BookmarkId with '$Tag'"
 }
 
 $bookmarks = @(
-    @{
-        Url = "https://github.com/cloudflare/security-audit-skill"
-        Properties = @{
-            domain = @("security")
-            concept = @("ai-agent")
-            practice = @("code-review")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/affaan-m/ECC"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("ai-agent")
-            practice = @("agent-engineering")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/alibaba/open-code-review"
-        Properties = @{
-            domain = @("software-engineering")
-            concept = @("ai-agent")
-            practice = @("code-review")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/vectorize-io/hindsight"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("ai-agent", "agent-memory")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/xai-org/x-algorithm"
-        Properties = @{
-            domain = @("machine-learning")
-            concept = @("recommendation-system", "algorithm")
-        }
-    },
-    @{
-        Url = "https://github.com/jingyaogong/minimind"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("large-language-model")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/krahets/hello-algo"
-        Properties = @{
-            domain = @("computer-science")
-            concept = @("algorithm", "data-structure")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/microsoft/AI-For-Beginners"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/microsoft/ML-For-Beginners"
-        Properties = @{
-            domain = @("machine-learning")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/microsoft/ai-agents-for-beginners"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("ai-agent")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/microsoft/mcp-for-beginners"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("mcp", "ai-agent")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/nexu-io/open-design"
-        Properties = @{
-            domain = @("design")
-            concept = @("ai-design", "ai-agent")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/VoltAgent/awesome-design-md"
-        Properties = @{
-            domain = @("design")
-            concept = @("design-system", "ai-design")
-            kind = @("reference")
-        }
-    },
-    @{
-        Url = "https://github.com/Nutlope/hallmark"
-        Properties = @{
-            domain = @("design")
-            concept = @("ai-design", "ui-design")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/penpot/penpot"
-        Properties = @{
-            domain = @("design")
-            concept = @("ui-design")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/obra/superpowers"
-        Properties = @{
-            domain = @("software-engineering")
-            concept = @("ai-agent")
-            practice = @("agent-engineering")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/anthropics/skills/tree/main/skills/mcp-builder"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("mcp", "ai-agent")
-            practice = @("agent-engineering")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"
-        Properties = @{
-            domain = @("design")
-            concept = @("ai-design", "ui-design")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/HandsOnLLM/Hands-On-Large-Language-Models"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("large-language-model")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/datawhalechina/happy-llm"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("large-language-model")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/datawhalechina/self-llm"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("large-language-model")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/datawhalechina/hello-agents"
-        Properties = @{
-            domain = @("artificial-intelligence")
-            concept = @("ai-agent")
-            practice = @("agent-engineering")
-            purpose = @("learning")
-        }
-    },
-    @{
-        Url = "https://github.com/dlvhdr/gh-dash"
-        Properties = @{
-            platform = @("github")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/zhaoxuya520/reverse-skill"
-        Properties = @{
-            domain = @("security")
-            concept = @("ai-agent")
-            practice = @("reverse-engineering")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/donnemartin/system-design-primer"
-        Properties = @{
-            domain = @("software-engineering")
-            practice = @("system-design")
-            purpose = @("learning")
-            kind = @("reference")
-        }
-    },
-    @{
-        Url = "https://github.com/bilawalsidhu/gods-eye-view"
-        Properties = @{
-            domain = @("computer-graphics")
-            concept = @("geospatial-visualization")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/tt-a1i/archify"
-        Properties = @{
-            domain = @("software-engineering")
-            concept = @("architecture-diagram")
-            practice = @("system-design")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/mattpocock/skills"
-        Properties = @{
-            domain = @("software-engineering")
-            practice = @("agent-engineering")
-            kind = @("skill")
-        }
-    },
-    @{
-        Url = "https://github.com/PanosK92/SpartanEngine"
-        Properties = @{
-            domain = @("computer-graphics")
-            concept = @("game-engine", "gpu-driven-rendering")
-            purpose = @("learning")
-            kind = @("reference")
-        }
-    },
-    @{
-        Url = "https://github.com/MrNeRF/LichtFeld-Studio"
-        Properties = @{
-            domain = @("computer-graphics")
-            concept = @("gaussian-splatting", "3d-reconstruction")
-            kind = @("tool")
-        }
-    },
-    @{
-        Url = "https://github.com/CyC2018/CS-Notes"
-        Properties = @{
-            domain = @("computer-science")
-            purpose = @("learning")
-            kind = @("reference")
-        }
-    },
-    @{
-        Url = "https://github.com/nilbuild/developer-roadmap"
-        Properties = @{
-            domain = @("software-engineering")
-            purpose = @("learning")
-            kind = @("reference")
-        }
-    },
-    @{
-        Url = "https://github.com/codecrafters-io/build-your-own-x"
-        Properties = @{
-            domain = @("computer-science")
-            purpose = @("learning")
-            kind = @("reference")
-        }
-    },
-    @{
-        Url = "https://github.com/freeCodeCamp/freeCodeCamp"
-        Properties = @{
-            domain = @("software-engineering")
-            concept = @("web-development")
-            purpose = @("learning")
-            kind = @("course")
-        }
-    },
-    @{
-        Url = "https://zh.zlibraryg.ru/"
-        Properties = @{
-            domain = @("publishing")
-            concept = @("digital-library", "shadow-library")
-            kind = @("service")
-        }
-    },
-    @{
-        Url = "https://libgen.ad/"
-        Properties = @{
-            domain = @("publishing")
-            concept = @("digital-library", "shadow-library")
-            kind = @("service")
-        }
-    },
-    @{
-        Url = "https://www.shuge.org/"
-        Properties = @{
-            domain = @("humanities")
-            concept = @("digital-library", "public-domain")
-            kind = @("reference")
-        }
-    },
-    @{
-        Url = "https://news.ycombinator.com/"
-        Properties = @{
-            domain = @("technology")
-            concept = @("technology-news")
-            kind = @("community")
-        }
-    },
-    @{
-        Url = "https://www.infoq.cn/"
-        Properties = @{
-            domain = @("software-engineering")
-            concept = @("technology-news")
-            kind = @("publication")
-        }
-    },
-    @{
-        Url = "https://stackoverflow.com/"
-        Properties = @{
-            domain = @("software-engineering")
-            concept = @("programming")
-            kind = @("community", "reference")
-        }
-    },
-    @{
-        Url = "https://www.v2ex.com/"
-        Properties = @{
-            domain = @("technology")
-            concept = @("developer-community")
-            kind = @("community")
-        }
-    }
+    @{ Url = "https://github.com/cloudflare/security-audit-skill"; Tags = @("security", "ai-agent", "code-review", "skill") },
+    @{ Url = "https://github.com/affaan-m/ECC"; Tags = @("artificial-intelligence", "ai-agent", "agent-engineering", "tool") },
+    @{ Url = "https://github.com/alibaba/open-code-review"; Tags = @("software-engineering", "ai-agent", "code-review", "tool") },
+    @{ Url = "https://github.com/vectorize-io/hindsight"; Tags = @("artificial-intelligence", "ai-agent", "agent-memory", "tool") },
+    @{ Url = "https://github.com/xai-org/x-algorithm"; Tags = @("machine-learning", "recommendation-system", "algorithm") },
+    @{ Url = "https://github.com/jingyaogong/minimind"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
+    @{ Url = "https://github.com/krahets/hello-algo"; Tags = @("computer-science", "algorithm", "data-structure", "learning") },
+    @{ Url = "https://github.com/microsoft/AI-For-Beginners"; Tags = @("artificial-intelligence", "learning") },
+    @{ Url = "https://github.com/microsoft/ML-For-Beginners"; Tags = @("machine-learning", "learning") },
+    @{ Url = "https://github.com/microsoft/ai-agents-for-beginners"; Tags = @("artificial-intelligence", "ai-agent", "learning") },
+    @{ Url = "https://github.com/microsoft/mcp-for-beginners"; Tags = @("artificial-intelligence", "mcp", "ai-agent", "learning") },
+    @{ Url = "https://github.com/nexu-io/open-design"; Tags = @("design", "ai-design", "ai-agent", "tool") },
+    @{ Url = "https://github.com/VoltAgent/awesome-design-md"; Tags = @("design", "design-system", "ai-design", "reference") },
+    @{ Url = "https://github.com/Nutlope/hallmark"; Tags = @("design", "ai-design", "ui-design", "skill") },
+    @{ Url = "https://github.com/penpot/penpot"; Tags = @("design", "ui-design", "tool") },
+    @{ Url = "https://github.com/obra/superpowers"; Tags = @("software-engineering", "ai-agent", "agent-engineering", "skill") },
+    @{ Url = "https://github.com/anthropics/skills/tree/main/skills/mcp-builder"; Tags = @("artificial-intelligence", "mcp", "ai-agent", "agent-engineering", "skill") },
+    @{ Url = "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill"; Tags = @("design", "ai-design", "ui-design", "skill") },
+    @{ Url = "https://github.com/HandsOnLLM/Hands-On-Large-Language-Models"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
+    @{ Url = "https://github.com/datawhalechina/happy-llm"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
+    @{ Url = "https://github.com/datawhalechina/self-llm"; Tags = @("artificial-intelligence", "large-language-model", "learning") },
+    @{ Url = "https://github.com/datawhalechina/hello-agents"; Tags = @("artificial-intelligence", "ai-agent", "agent-engineering", "learning") },
+    @{ Url = "https://github.com/dlvhdr/gh-dash"; Tags = @("github", "tool") },
+    @{ Url = "https://github.com/zhaoxuya520/reverse-skill"; Tags = @("security", "ai-agent", "reverse-engineering", "skill") },
+    @{ Url = "https://github.com/donnemartin/system-design-primer"; Tags = @("software-engineering", "system-design", "learning", "reference") },
+    @{ Url = "https://github.com/bilawalsidhu/gods-eye-view"; Tags = @("computer-graphics", "geospatial-visualization", "tool") },
+    @{ Url = "https://github.com/tt-a1i/archify"; Tags = @("software-engineering", "architecture-diagram", "system-design", "skill") },
+    @{ Url = "https://github.com/mattpocock/skills"; Tags = @("software-engineering", "agent-engineering", "skill") },
+    @{ Url = "https://github.com/PanosK92/SpartanEngine"; Tags = @("computer-graphics", "game-engine", "gpu-driven-rendering", "learning", "reference") },
+    @{ Url = "https://github.com/MrNeRF/LichtFeld-Studio"; Tags = @("computer-graphics", "gaussian-splatting", "3d-reconstruction", "tool") },
+    @{ Url = "https://github.com/CyC2018/CS-Notes"; Tags = @("computer-science", "learning", "reference") },
+    @{ Url = "https://github.com/nilbuild/developer-roadmap"; Tags = @("software-engineering", "learning", "reference") },
+    @{ Url = "https://github.com/codecrafters-io/build-your-own-x"; Tags = @("computer-science", "learning", "reference") },
+    @{ Url = "https://github.com/freeCodeCamp/freeCodeCamp"; Tags = @("software-engineering", "web-development", "learning", "course") },
+    @{ Url = "https://zh.zlibraryg.ru/"; Tags = @("publishing", "digital-library", "shadow-library", "service") },
+    @{ Url = "https://libgen.ad/"; Tags = @("publishing", "digital-library", "shadow-library", "service") },
+    @{ Url = "https://www.shuge.org/"; Tags = @("humanities", "digital-library", "public-domain", "reference") },
+    @{ Url = "https://news.ycombinator.com/"; Tags = @("technology", "technology-news", "community") },
+    @{ Url = "https://www.infoq.cn/"; Tags = @("software-engineering", "technology-news", "publication") },
+    @{ Url = "https://stackoverflow.com/"; Tags = @("software-engineering", "programming", "community", "reference") },
+    @{ Url = "https://www.v2ex.com/"; Tags = @("technology", "developer-community", "community") }
+)
+
+$hierarchy = @(
+    @("technology", "computer-science"),
+    @("computer-science", "artificial-intelligence"),
+    @("artificial-intelligence", "machine-learning"),
+    @("computer-science", "software-engineering"),
+    @("computer-science", "computer-graphics"),
+    @("computer-science", "security")
 )
 
 $init = Invoke-Rinut -Arguments @("init")
 Require-Success -Result $init -Action "Initializing Rinut"
 
-Ensure-Key -Name "domain"
-Ensure-Key -Name "concept"
-Ensure-Key -Name "practice"
-Ensure-Key -Name "platform"
-Ensure-Key -Name "purpose"
-Ensure-Key -Name "kind"
+$allTags = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+foreach ($bookmark in $bookmarks) {
+    foreach ($tag in $bookmark.Tags) {
+        [void] $allTags.Add($tag)
+    }
+}
+foreach ($edge in $hierarchy) {
+    [void] $allTags.Add($edge[0])
+    [void] $allTags.Add($edge[1])
+}
 
-$legacyTopicExists = Test-Key -Name "topic"
+foreach ($tag in ($allTags | Sort-Object)) {
+    Ensure-Tag -Name $tag
+}
+
+foreach ($edge in $hierarchy) {
+    $link = Invoke-Rinut -Arguments @("tag", "link", $edge[0], $edge[1])
+    Require-Success -Result $link -Action "Linking '$($edge[0])' -> '$($edge[1])'"
+}
 
 foreach ($bookmark in $bookmarks) {
     $id = Ensure-Bookmark -Url $bookmark.Url
-
-    foreach ($property in $bookmark.Properties.GetEnumerator()) {
-        foreach ($value in @($property.Value)) {
-            Ensure-Value -BookmarkId $id -Key $property.Key -Value $value
-        }
+    foreach ($tag in $bookmark.Tags) {
+        Ensure-BookmarkTag -BookmarkId $id -Tag $tag
     }
-
-    if ($legacyTopicExists) {
-        Remove-All-Values -BookmarkId $id -Key "topic"
-    }
-}
-
-if ($legacyTopicExists) {
-    Write-Host "Legacy key 'topic' is no longer used by seeded bookmarks."
-    Write-Host "It is kept to avoid deleting topic data from bookmarks outside this seed."
 }
 
 Write-Host ""

@@ -1,14 +1,12 @@
 mod bookmark;
 mod cli;
 mod db;
-mod key;
-mod property;
+mod tag;
 
 use std::io;
 
 use clap::Parser;
-use cli::{CardinalityArg, Cli, Command, KeyCommand, KeyTypeArg};
-use key::{Cardinality, KeyType};
+use cli::{Cli, Command, TagCommand};
 
 fn main() {
     if let Err(error) = run() {
@@ -31,20 +29,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let id = bookmark::add(&connection, &url)?;
             println!("Added [{id}] {url}");
         }
-        Command::List { matches } => {
+        Command::List { selectors } => {
             let connection = db::open_default()?;
-            let conditions = property::resolve_matches(&connection, &matches)?;
-            let bookmarks = bookmark::list(&connection)?;
-
-            for bookmark in bookmarks {
-                let mut matched = true;
-                for condition in &conditions {
-                    if !property::bookmark_matches(&connection, bookmark.id, condition)? {
-                        matched = false;
-                        break;
-                    }
-                }
-                if matched {
+            let selectors = tag::resolve_selectors(&connection, &selectors)?;
+            for bookmark in bookmark::list(&connection)? {
+                if tag::bookmark_matches(&connection, bookmark.id, &selectors)? {
                     println!("[{}] {}", bookmark.id, bookmark.url);
                 }
             }
@@ -52,29 +41,32 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         Command::Show { id } => {
             let connection = db::open_default()?;
             let bookmark = require_bookmark(&connection, id)?;
-
             println!("ID:      {}", bookmark.id);
             println!("URL:     {}", bookmark.url);
             println!("Created: {}", bookmark.created_at);
             println!("Updated: {}", bookmark.updated_at);
-            let properties = property::list_for_bookmark(&connection, id)?;
-            if !properties.is_empty() {
-                println!("Properties:");
-                for (key, value) in properties {
-                    println!("  {key}={value}");
+            let tags = tag::list_for_bookmark(&connection, id)?;
+            if !tags.is_empty() {
+                println!("Tags:");
+                for tag in tags {
+                    println!("  {tag}");
                 }
             }
         }
-        Command::Edit { id, set, unset } => {
+        Command::Edit { id, tags, untags } => {
             let mut connection = db::open_default()?;
             require_bookmark(&connection, id)?;
+            let changed = !tags.is_empty() || !untags.is_empty();
 
             let transaction = connection.transaction()?;
-            for value in set {
-                property::set(&transaction, id, &value)?;
+            for name in tags {
+                tag::assign(&transaction, id, &name)?;
             }
-            for value in unset {
-                property::unset(&transaction, id, &value)?;
+            for name in untags {
+                tag::unassign(&transaction, id, &name)?;
+            }
+            if changed {
+                bookmark::touch(&transaction, id)?;
             }
             transaction.commit()?;
             println!("Edited bookmark {id}");
@@ -87,62 +79,76 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 return Err(not_found(format!("bookmark {id} not found")));
             }
         }
-        Command::Key { command } => {
+        Command::Tag { command } => {
             let connection = db::open_default()?;
-            run_key_command(&connection, command)?;
+            run_tag_command(&connection, command)?;
         }
     }
 
     Ok(())
 }
 
-fn run_key_command(
+fn run_tag_command(
     connection: &rusqlite::Connection,
-    command: KeyCommand,
+    command: TagCommand,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match command {
-        KeyCommand::Add {
-            name,
-            key_type,
-            cardinality,
-        } => {
-            key::add(
-                connection,
-                &name,
-                key_type_from_arg(key_type),
-                cardinality_from_arg(cardinality),
-            )?;
-            println!("Added key {name}");
+        TagCommand::Add { name } => {
+            tag::add(connection, &name)?;
+            println!("Added tag {name}");
         }
-        KeyCommand::List => {
-            for key in key::list(connection)? {
-                println!(
-                    "{}\t{}\t{}",
-                    key.name,
-                    key.key_type.as_str(),
-                    key.cardinality.as_str()
-                );
+        TagCommand::List => {
+            for tag in tag::list(connection)? {
+                println!("{}", tag.name);
             }
         }
-        KeyCommand::Show { name } => {
-            let key = key::get(connection, &name)?
-                .ok_or_else(|| not_found(format!("key '{name}' not found")))?;
-            println!("Name:        {}", key.name);
-            println!("Type:        {}", key.key_type.as_str());
-            println!("Cardinality: {}", key.cardinality.as_str());
-        }
-        KeyCommand::Edit { name, new_name } => {
-            if key::rename(connection, &name, &new_name)? {
-                println!("Renamed key {name} to {new_name}");
-            } else {
-                return Err(not_found(format!("key '{name}' not found")));
+        TagCommand::Show { name } => {
+            let item = tag::get(connection, &name)?
+                .ok_or_else(|| not_found(format!("tag '{name}' not found")))?;
+            println!("Name: {}", item.name);
+            let parents = tag::parents(connection, item.id)?;
+            let children = tag::children(connection, item.id)?;
+            if !parents.is_empty() {
+                println!("Parents:");
+                for parent in parents {
+                    println!("  {parent}");
+                }
+            }
+            if !children.is_empty() {
+                println!("Children:");
+                for child in children {
+                    println!("  {child}");
+                }
             }
         }
-        KeyCommand::Delete { name } => {
-            if key::delete(connection, &name)? {
-                println!("Deleted key {name}");
+        TagCommand::Edit { name, new_name } => {
+            if tag::rename(connection, &name, &new_name)? {
+                println!("Renamed tag {name} to {new_name}");
             } else {
-                return Err(not_found(format!("key '{name}' not found")));
+                return Err(not_found(format!("tag '{name}' not found")));
+            }
+        }
+        TagCommand::Delete { name } => {
+            if tag::delete(connection, &name)? {
+                println!("Deleted tag {name}");
+            } else {
+                return Err(not_found(format!("tag '{name}' not found")));
+            }
+        }
+        TagCommand::Link { parent, child } => {
+            tag::link(connection, &parent, &child)?;
+            println!("Linked {parent} -> {child}");
+        }
+        TagCommand::Unlink { parent, child } => {
+            if tag::unlink(connection, &parent, &child)? {
+                println!("Unlinked {parent} -> {child}");
+            } else {
+                return Err(not_found(format!("tag link '{parent} -> {child}' not found")));
+            }
+        }
+        TagCommand::Tree => {
+            for line in tag::tree_lines(connection)? {
+                println!("{line}");
             }
         }
     }
@@ -158,12 +164,4 @@ fn require_bookmark(
 
 fn not_found(message: String) -> Box<dyn std::error::Error> {
     io::Error::new(io::ErrorKind::NotFound, message).into()
-}
-
-fn key_type_from_arg(value: KeyTypeArg) -> KeyType {
-    KeyType::parse(value.as_str()).expect("CLI key type must be valid")
-}
-
-fn cardinality_from_arg(value: CardinalityArg) -> Cardinality {
-    Cardinality::parse(value.as_str()).expect("CLI cardinality must be valid")
 }

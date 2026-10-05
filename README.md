@@ -2,7 +2,7 @@
 
 Rinut is a local-first, programmable bookmark manager.
 
-The current milestone is a small local CLI backed by SQLite, with typed property keys and exact property matching.
+The current milestone is a small local CLI backed by SQLite. A bookmark has a URL and an unordered set of tags. Tags are global entities and can form a DAG for broader/narrower relationships.
 
 ## Commands
 
@@ -11,31 +11,44 @@ rinut init [--db PATH]
 
 rinut add URL
 
-rinut list [-m KEY=VALUE | --match KEY=VALUE]...
+rinut list [+TAG]... [-TAG]...
 
 rinut show ID
 
 rinut edit ID \
-    [--set KEY=VALUE]... \
-    [--unset KEY[=VALUE]]...
+    [--tag TAG]... \
+    [--untag TAG]...
 
 rinut delete ID
 
-rinut key add NAME \
-    --type text|integer|number|boolean|taxonomy \
-    --cardinality single|multi
+rinut tag add NAME
+rinut tag list
+rinut tag show NAME
+rinut tag edit NAME --name NEW_NAME
+rinut tag delete NAME
 
-rinut key list
-rinut key show NAME
-rinut key edit NAME --name NEW_NAME
-rinut key delete NAME
+rinut tag link PARENT CHILD
+rinut tag unlink PARENT CHILD
+rinut tag tree
 ```
 
-`boolean` keys must use `single` cardinality and accept only `true` or `false`.
+`+TAG` requires the bookmark to have that tag or one of its descendants. Multiple positive selectors use AND semantics. `-TAG` excludes bookmarks with that tag or one of its descendants.
 
-For `single` keys, `--set` replaces the previous value. For `multi` keys, repeated `--set` values form an unordered set. `--unset KEY=VALUE` removes one value and `--unset KEY` removes all values for that key.
+Tags may be assigned whether or not they have children. `tag link` creates a broader -> narrower relationship and rejects cycles. A tag may have multiple parents.
 
-`taxonomy` values have stable identities. Assigning a new taxonomy value creates a leaf value entity. The schema reserves group nodes and DAG edges for taxonomy organization; management commands for that hierarchy are intentionally not exposed yet.
+`edit --tag` requires the tag to exist. Use `tag add` to extend the vocabulary explicitly; this keeps typos from silently creating tags.
+
+## Migration from the key model
+
+Opening an older database automatically performs a one-time migration:
+
+- scalar property values become tags;
+- assigned taxonomy nodes become tags;
+- taxonomy hierarchy edges become tag edges;
+- key names, types, and cardinality are discarded;
+- the legacy property tables are removed after a successful migration.
+
+If the same value existed under more than one old key, it becomes one global tag.
 
 ## Database location
 

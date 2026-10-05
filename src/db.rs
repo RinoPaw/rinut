@@ -73,67 +73,118 @@ fn open(path: &Path) -> Result<Connection, Box<dyn std::error::Error>> {
 }
 
 pub(crate) fn migrate(connection: &Connection) -> SqlResult<()> {
-    connection.execute_batch(
-        "PRAGMA foreign_keys = ON;
+    connection.execute_batch("PRAGMA foreign_keys = ON;")?;
+    let legacy_schema = table_exists(connection, "property_keys")?;
 
-         CREATE TABLE IF NOT EXISTS bookmarks (
+    connection.execute_batch(
+        "CREATE TABLE IF NOT EXISTS bookmarks (
              id         INTEGER PRIMARY KEY,
              url        TEXT NOT NULL,
              created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
              updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
          );
 
-         CREATE TABLE IF NOT EXISTS property_keys (
-             id          INTEGER PRIMARY KEY,
-             name        TEXT NOT NULL UNIQUE,
-             type        TEXT NOT NULL CHECK (type IN ('text', 'integer', 'number', 'boolean', 'taxonomy')),
-             cardinality TEXT NOT NULL CHECK (cardinality IN ('single', 'multi')),
-             CHECK (type <> 'boolean' OR cardinality = 'single')
+         CREATE TABLE IF NOT EXISTS tags (
+             id   INTEGER PRIMARY KEY,
+             name TEXT NOT NULL UNIQUE
          );
 
-         CREATE TABLE IF NOT EXISTS scalar_properties (
-             bookmark_id INTEGER NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
-             key_id      INTEGER NOT NULL REFERENCES property_keys(id) ON DELETE CASCADE,
-             value       TEXT NOT NULL,
-             PRIMARY KEY (bookmark_id, key_id, value)
-         );
-
-         CREATE TABLE IF NOT EXISTS taxonomy_nodes (
-             id     INTEGER PRIMARY KEY,
-             key_id INTEGER NOT NULL REFERENCES property_keys(id) ON DELETE CASCADE,
-             name   TEXT NOT NULL,
-             kind   TEXT NOT NULL CHECK (kind IN ('group', 'value')),
-             UNIQUE (key_id, name)
-         );
-
-         CREATE TABLE IF NOT EXISTS taxonomy_edges (
-             parent_id INTEGER NOT NULL REFERENCES taxonomy_nodes(id) ON DELETE CASCADE,
-             child_id  INTEGER NOT NULL REFERENCES taxonomy_nodes(id) ON DELETE CASCADE,
+         CREATE TABLE IF NOT EXISTS tag_edges (
+             parent_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+             child_id  INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
              PRIMARY KEY (parent_id, child_id),
              CHECK (parent_id <> child_id)
          );
 
-         CREATE TABLE IF NOT EXISTS taxonomy_properties (
+         CREATE TABLE IF NOT EXISTS bookmark_tags (
              bookmark_id INTEGER NOT NULL REFERENCES bookmarks(id) ON DELETE CASCADE,
-             key_id      INTEGER NOT NULL REFERENCES property_keys(id) ON DELETE CASCADE,
-             value_id    INTEGER NOT NULL REFERENCES taxonomy_nodes(id) ON DELETE CASCADE,
-             PRIMARY KEY (bookmark_id, key_id, value_id)
+             tag_id      INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+             PRIMARY KEY (bookmark_id, tag_id)
          );
 
-         CREATE TRIGGER IF NOT EXISTS taxonomy_parent_must_be_group
-         BEFORE INSERT ON taxonomy_edges
-         WHEN (SELECT kind FROM taxonomy_nodes WHERE id = NEW.parent_id) <> 'group'
-         BEGIN
-             SELECT RAISE(ABORT, 'taxonomy parent must be a group');
-         END;
+         CREATE INDEX IF NOT EXISTS bookmark_tags_tag_id ON bookmark_tags(tag_id);
+         CREATE INDEX IF NOT EXISTS tag_edges_child_id ON tag_edges(child_id);
 
-         CREATE TRIGGER IF NOT EXISTS taxonomy_edge_same_key
-         BEFORE INSERT ON taxonomy_edges
-         WHEN (SELECT key_id FROM taxonomy_nodes WHERE id = NEW.parent_id)
-              <> (SELECT key_id FROM taxonomy_nodes WHERE id = NEW.child_id)
+         CREATE TRIGGER IF NOT EXISTS tag_edge_no_cycle
+         BEFORE INSERT ON tag_edges
+         WHEN EXISTS (
+             WITH RECURSIVE descendants(id) AS (
+                 SELECT NEW.child_id
+                 UNION
+                 SELECT e.child_id
+                 FROM tag_edges e
+                 JOIN descendants d ON e.parent_id = d.id
+             )
+             SELECT 1 FROM descendants WHERE id = NEW.parent_id
+         )
          BEGIN
-             SELECT RAISE(ABORT, 'taxonomy nodes must belong to the same key');
+             SELECT RAISE(ABORT, 'tag hierarchy cannot contain a cycle');
          END;",
+    )?;
+
+    if legacy_schema {
+        migrate_legacy_schema(connection)?;
+    }
+
+    Ok(())
+}
+
+fn migrate_legacy_schema(connection: &Connection) -> SqlResult<()> {
+    let result = connection.execute_batch(
+        "BEGIN IMMEDIATE;
+
+         INSERT OR IGNORE INTO tags (name)
+         SELECT value FROM scalar_properties;
+
+         INSERT OR IGNORE INTO tags (name)
+         SELECT DISTINCT n.name
+         FROM taxonomy_nodes n
+         WHERE EXISTS (SELECT 1 FROM taxonomy_properties p WHERE p.value_id = n.id)
+            OR EXISTS (SELECT 1 FROM taxonomy_edges e WHERE e.parent_id = n.id OR e.child_id = n.id);
+
+         INSERT OR IGNORE INTO bookmark_tags (bookmark_id, tag_id)
+         SELECT p.bookmark_id, t.id
+         FROM scalar_properties p
+         JOIN tags t ON t.name = p.value;
+
+         INSERT OR IGNORE INTO bookmark_tags (bookmark_id, tag_id)
+         SELECT p.bookmark_id, t.id
+         FROM taxonomy_properties p
+         JOIN taxonomy_nodes n ON n.id = p.value_id
+         JOIN tags t ON t.name = n.name;
+
+         INSERT OR IGNORE INTO tag_edges (parent_id, child_id)
+         SELECT parent_tag.id, child_tag.id
+         FROM taxonomy_edges e
+         JOIN taxonomy_nodes parent_node ON parent_node.id = e.parent_id
+         JOIN taxonomy_nodes child_node ON child_node.id = e.child_id
+         JOIN tags parent_tag ON parent_tag.name = parent_node.name
+         JOIN tags child_tag ON child_tag.name = child_node.name;
+
+         DROP TRIGGER IF EXISTS taxonomy_parent_must_be_group;
+         DROP TRIGGER IF EXISTS taxonomy_edge_same_key;
+         DROP TABLE IF EXISTS taxonomy_properties;
+         DROP TABLE IF EXISTS taxonomy_edges;
+         DROP TABLE IF EXISTS taxonomy_nodes;
+         DROP TABLE IF EXISTS scalar_properties;
+         DROP TABLE IF EXISTS property_keys;
+
+         COMMIT;",
+    );
+
+    if result.is_err() {
+        let _ = connection.execute_batch("ROLLBACK;");
+    }
+    result
+}
+
+fn table_exists(connection: &Connection, name: &str) -> SqlResult<bool> {
+    connection.query_row(
+        "SELECT EXISTS(
+             SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1
+         )",
+        [name],
+        |row| row.get(0),
     )
 }
 
@@ -142,4 +193,88 @@ pub fn memory() -> SqlResult<Connection> {
     let connection = Connection::open_in_memory()?;
     migrate(&connection)?;
     Ok(connection)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_properties_are_flattened_into_tags_once() -> SqlResult<()> {
+        let connection = Connection::open_in_memory()?;
+        connection.execute_batch(
+            "PRAGMA foreign_keys = ON;
+             CREATE TABLE bookmarks (
+                 id INTEGER PRIMARY KEY,
+                 url TEXT NOT NULL,
+                 created_at TEXT NOT NULL DEFAULT '',
+                 updated_at TEXT NOT NULL DEFAULT ''
+             );
+             CREATE TABLE property_keys (
+                 id INTEGER PRIMARY KEY,
+                 name TEXT NOT NULL UNIQUE,
+                 type TEXT NOT NULL,
+                 cardinality TEXT NOT NULL
+             );
+             CREATE TABLE scalar_properties (
+                 bookmark_id INTEGER NOT NULL,
+                 key_id INTEGER NOT NULL,
+                 value TEXT NOT NULL,
+                 PRIMARY KEY (bookmark_id, key_id, value)
+             );
+             CREATE TABLE taxonomy_nodes (
+                 id INTEGER PRIMARY KEY,
+                 key_id INTEGER NOT NULL,
+                 name TEXT NOT NULL,
+                 kind TEXT NOT NULL,
+                 UNIQUE (key_id, name)
+             );
+             CREATE TABLE taxonomy_edges (
+                 parent_id INTEGER NOT NULL,
+                 child_id INTEGER NOT NULL,
+                 PRIMARY KEY (parent_id, child_id)
+             );
+             CREATE TABLE taxonomy_properties (
+                 bookmark_id INTEGER NOT NULL,
+                 key_id INTEGER NOT NULL,
+                 value_id INTEGER NOT NULL,
+                 PRIMARY KEY (bookmark_id, key_id, value_id)
+             );
+             INSERT INTO bookmarks (id, url) VALUES (1, 'https://example.com');
+             INSERT INTO property_keys VALUES (1, 'domain', 'taxonomy', 'multi');
+             INSERT INTO taxonomy_nodes VALUES (1, 1, 'computer-science', 'group');
+             INSERT INTO taxonomy_nodes VALUES (2, 1, 'computer-graphics', 'value');
+             INSERT INTO taxonomy_edges VALUES (1, 2);
+             INSERT INTO taxonomy_properties VALUES (1, 1, 2);",
+        )?;
+
+        migrate(&connection)?;
+        assert!(!table_exists(&connection, "property_keys")?);
+        let assigned: i64 = connection.query_row(
+            "SELECT COUNT(*) FROM bookmark_tags bt JOIN tags t ON t.id = bt.tag_id
+             WHERE bt.bookmark_id = 1 AND t.name = 'computer-graphics'",
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(assigned, 1);
+        let edge: i64 = connection.query_row(
+            "SELECT COUNT(*) FROM tag_edges e
+             JOIN tags p ON p.id = e.parent_id
+             JOIN tags c ON c.id = e.child_id
+             WHERE p.name = 'computer-science' AND c.name = 'computer-graphics'",
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(edge, 1);
+
+        migrate(&connection)?;
+        let assigned_after_second_migration: i64 = connection.query_row(
+            "SELECT COUNT(*) FROM bookmark_tags bt JOIN tags t ON t.id = bt.tag_id
+             WHERE bt.bookmark_id = 1 AND t.name = 'computer-graphics'",
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(assigned_after_second_migration, 1);
+        Ok(())
+    }
 }
