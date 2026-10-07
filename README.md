@@ -21,6 +21,12 @@ rinut edit ID \
 
 rinut delete ID
 
+rinut key
+rinut key NAME
+rinut key add NAME [--cardinality single|multi]
+rinut key edit NAME [--name NEW_NAME] [--cardinality single|multi]
+rinut key delete NAME
+
 rinut tag add NAME
 rinut tag list
 rinut tag show NAME
@@ -33,6 +39,8 @@ rinut tag tree
 ```
 
 `+TAG` requires the bookmark to have that tag or one of its descendants. Multiple positive selectors use AND semantics. `-TAG` excludes bookmarks with that tag or one of its descendants.
+
+Keys provide a top-level dimension for structured metadata. A key has a name and a cardinality (`single` or `multi`). `rinut key` lists keys, while `rinut key NAME` shows one key. Key values are not implemented yet.
 
 Tags may be assigned whether or not they have children. `tag link` creates a broader -> narrower relationship and rejects cycles. Each tag can have at most one parent. To reparent a tag, unlink its current parent first.
 
