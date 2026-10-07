@@ -1,12 +1,13 @@
 mod bookmark;
 mod cli;
 mod db;
+mod key;
 mod tag;
 
 use std::io;
 
 use clap::Parser;
-use cli::{Cli, Command, TagCommand};
+use cli::{Cli, Command, KeyCommand, TagCommand};
 
 fn main() {
     if let Err(error) = run() {
@@ -79,9 +80,65 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 return Err(not_found(format!("bookmark {id} not found")));
             }
         }
+        Command::Key { name, command } => {
+            let connection = db::open_default()?;
+            run_key_command(&connection, name, command)?;
+        }
         Command::Tag { command } => {
             let connection = db::open_default()?;
             run_tag_command(&connection, command)?;
+        }
+    }
+
+    Ok(())
+}
+
+
+fn run_key_command(
+    connection: &rusqlite::Connection,
+    name: Option<String>,
+    command: Option<KeyCommand>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match command {
+        Some(KeyCommand::Add { name, cardinality }) => {
+            key::add(connection, &name, cardinality.as_str())?;
+            println!("Added key {name}");
+        }
+        Some(KeyCommand::Edit {
+            name,
+            new_name,
+            cardinality,
+        }) => {
+            let cardinality = cardinality.map(|value| value.as_str());
+            if key::edit(
+                connection,
+                &name,
+                new_name.as_deref(),
+                cardinality,
+            )? {
+                println!("Edited key {name}");
+            } else {
+                return Err(not_found(format!("key '{name}' not found")));
+            }
+        }
+        Some(KeyCommand::Delete { name }) => {
+            if key::delete(connection, &name)? {
+                println!("Deleted key {name}");
+            } else {
+                return Err(not_found(format!("key '{name}' not found")));
+            }
+        }
+        None => {
+            if let Some(name) = name {
+                let item = key::get(connection, &name)?
+                    .ok_or_else(|| not_found(format!("key '{name}' not found")))?;
+                println!("Name: {}", item.name);
+                println!("Cardinality: {}", item.cardinality);
+            } else {
+                for item in key::list(connection)? {
+                    println!("{} {}", item.name, item.cardinality);
+                }
+            }
         }
     }
 
