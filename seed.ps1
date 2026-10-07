@@ -178,7 +178,7 @@ $bookmarks = @(
     @{ Url = "https://github.com/affaan-m/ECC"; Tags = @("AI", "agent", "agent-eng", "tool") },
     @{ Url = "https://github.com/alibaba/open-code-review"; Tags = @("software-eng", "agent", "code-review", "tool") },
     @{ Url = "https://github.com/vectorize-io/hindsight"; Tags = @("AI", "agent", "memory", "tool") },
-    @{ Url = "https://github.com/xai-org/x-algorithm"; Tags = @("ML", "recommender", "algorithm") },
+    @{ Url = "https://github.com/xai-org/x-algorithm"; Tags = @("ML", "algorithm") },
     @{ Url = "https://github.com/jingyaogong/minimind"; Tags = @("AI", "LLM", "learning") },
     @{ Url = "https://github.com/krahets/hello-algo"; Tags = @("CS", "algorithm", "data-structure", "learning") },
     @{ Url = "https://github.com/microsoft/AI-For-Beginners"; Tags = @("AI", "learning") },
@@ -226,7 +226,6 @@ $renames = @(
     @("software-engineering", "software-eng"),
     @("agent-engineering", "agent-eng"),
     @("reverse-engineering", "reverse-eng"),
-    @("recommendation-system", "recommender"),
     @("architecture-diagram", "arch-diagram"),
     @("developer-community", "dev-community"),
     @("geospatial-visualization", "geo-viz"),
@@ -256,7 +255,6 @@ $hierarchy = @(
     @("CS", "programming"),
     @("AI", "agent"),
     @("AI", "LLM"),
-    @("ML", "recommender"),
     @("agent", "memory"),
     @("design", "ai-design"),
     @("design", "UI"),
@@ -284,6 +282,7 @@ foreach ($rename in $renames) {
 Unlink-TagIfPresent -Parent "system-design" -Child "diagram"
 Unlink-TagIfPresent -Parent "digital-library" -Child "shadow"
 Delete-TagIfPresent -Name "dev"
+Delete-TagIfPresent -Name "recommender"
 
 $allTags = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 foreach ($bookmark in $bookmarks) {
