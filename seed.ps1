@@ -80,6 +80,43 @@ function Rename-TagIfNeeded {
     Write-Host "Renamed tag: $OldName -> $NewName"
 }
 
+function Unlink-TagIfPresent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Parent,
+        [Parameter(Mandatory = $true)]
+        [string] $Child
+    )
+
+    if (-not (Test-Tag -Name $Parent) -or -not (Test-Tag -Name $Child)) {
+        return
+    }
+
+    $show = Invoke-Rinut -Arguments @("tag", "show", $Child)
+    Require-Success -Result $show -Action "Inspecting tag '$Child'"
+
+    if ($show.Output -contains "Parent: $Parent") {
+        $unlink = Invoke-Rinut -Arguments @("tag", "unlink", $Parent, $Child)
+        Require-Success -Result $unlink -Action "Unlinking '$Parent' -> '$Child'"
+        Write-Host "Unlinked tag hierarchy: $Parent -> $Child"
+    }
+}
+
+function Delete-TagIfPresent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Name
+    )
+
+    if (-not (Test-Tag -Name $Name)) {
+        return
+    }
+
+    $delete = Invoke-Rinut -Arguments @("tag", "delete", $Name)
+    Require-Success -Result $delete -Action "Deleting tag '$Name'"
+    Write-Host "Deleted tag: $Name"
+}
+
 function Find-BookmarkId {
     param(
         [Parameter(Mandatory = $true)]
@@ -149,7 +186,7 @@ $bookmarks = @(
     @{ Url = "https://github.com/microsoft/ai-agents-for-beginners"; Tags = @("AI", "agent", "learning") },
     @{ Url = "https://github.com/microsoft/mcp-for-beginners"; Tags = @("AI", "mcp", "agent", "learning") },
     @{ Url = "https://github.com/nexu-io/open-design"; Tags = @("design", "ai-design", "agent", "tool") },
-    @{ Url = "https://github.com/VoltAgent/awesome-design-md"; Tags = @("design", "system", "ai-design", "reference") },
+    @{ Url = "https://github.com/VoltAgent/awesome-design-md"; Tags = @("design", "design-system", "ai-design", "reference") },
     @{ Url = "https://github.com/Nutlope/hallmark"; Tags = @("design", "ai-design", "UI", "skill") },
     @{ Url = "https://github.com/penpot/penpot"; Tags = @("design", "UI", "tool") },
     @{ Url = "https://github.com/obra/superpowers"; Tags = @("software-eng", "agent", "agent-eng", "skill") },
@@ -177,7 +214,7 @@ $bookmarks = @(
     @{ Url = "https://news.ycombinator.com/"; Tags = @("technology", "technology-news", "community") },
     @{ Url = "https://www.infoq.cn/"; Tags = @("software-eng", "technology-news", "publication") },
     @{ Url = "https://stackoverflow.com/"; Tags = @("software-eng", "programming", "community", "reference") },
-    @{ Url = "https://www.v2ex.com/"; Tags = @("technology", "dev", "community") }
+    @{ Url = "https://www.v2ex.com/"; Tags = @("technology", "community") }
 )
 
 $renames = @(
@@ -198,9 +235,8 @@ $renames = @(
     @("3d-reconstruction", "3d-recon"),
     @("ai-agent", "agent"),
     @("agent-memory", "memory"),
-    @("design-system", "system"),
+    @("system", "design-system"),
     @("ui-design", "UI"),
-    @("dev-community", "dev"),
     @("shadow-library", "shadow"),
     @("arch-diagram", "diagram"),
     @("web-development", "web"),
@@ -209,6 +245,7 @@ $renames = @(
 
 $hierarchy = @(
     @("technology", "CS"),
+    @("technology", "design"),
     @("CS", "AI"),
     @("AI", "ML"),
     @("CS", "software-eng"),
@@ -223,17 +260,17 @@ $hierarchy = @(
     @("agent", "memory"),
     @("design", "ai-design"),
     @("design", "UI"),
-    @("design", "system"),
+    @("design", "design-system"),
     @("software-eng", "system-design"),
-    @("system-design", "diagram"),
     @("software-eng", "code-review"),
     @("software-eng", "web"),
     @("security", "reverse"),
     @("CG", "3DGS"),
+    @("CG", "3d-recon"),
     @("CG", "gpu-driven"),
     @("CG", "geo-viz"),
-    @("community", "dev"),
-    @("digital-library", "shadow")
+    @("publishing", "public-domain"),
+    @("publishing", "shadow")
 )
 
 $init = Invoke-Rinut -Arguments @("init")
@@ -242,6 +279,11 @@ Require-Success -Result $init -Action "Initializing Rinut"
 foreach ($rename in $renames) {
     Rename-TagIfNeeded -OldName $rename[0] -NewName $rename[1]
 }
+
+# Remove hierarchy choices from older seed revisions before applying the new forest.
+Unlink-TagIfPresent -Parent "system-design" -Child "diagram"
+Unlink-TagIfPresent -Parent "digital-library" -Child "shadow"
+Delete-TagIfPresent -Name "dev"
 
 $allTags = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 foreach ($bookmark in $bookmarks) {
