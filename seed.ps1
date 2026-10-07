@@ -34,6 +34,26 @@ function Require-Success {
     }
 }
 
+
+function Ensure-Key {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Name,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("single", "multi")]
+        [string] $Cardinality
+    )
+
+    $show = Invoke-Rinut -Arguments @("key", $Name)
+    if ($show.ExitCode -eq 0) {
+        return
+    }
+
+    $add = Invoke-Rinut -Arguments @("key", "add", $Name, "--cardinality", $Cardinality)
+    Require-Success -Result $add -Action "Creating key '$Name'"
+    Write-Host "Created key: $Name ($Cardinality)"
+}
+
 function Find-BookmarkId {
     param(
         [Parameter(Mandatory = $true)]
@@ -124,6 +144,10 @@ $bookmarks = @(
 
 $init = Invoke-Rinut -Arguments @("init")
 Require-Success -Result $init -Action "Initializing Rinut"
+
+Ensure-Key -Name "Source" -Cardinality "single"
+Ensure-Key -Name "Field" -Cardinality "multi"
+Ensure-Key -Name "Type" -Cardinality "multi"
 
 # Start from a completely empty tag vocabulary.
 $tagList = Invoke-Rinut -Arguments @("tag", "list")
