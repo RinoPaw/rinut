@@ -84,6 +84,12 @@ pub(crate) fn migrate(connection: &Connection) -> SqlResult<()> {
              updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
          );
 
+         CREATE TABLE IF NOT EXISTS keys (
+             id          INTEGER PRIMARY KEY,
+             name        TEXT NOT NULL UNIQUE,
+             cardinality TEXT NOT NULL CHECK (cardinality IN ('single', 'multi'))
+         );
+
          CREATE TABLE IF NOT EXISTS tags (
              id   INTEGER PRIMARY KEY,
              name TEXT NOT NULL UNIQUE
