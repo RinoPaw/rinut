@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
 #[command(name = "rinut", version, about = "A local-first, programmable bookmark manager")]
@@ -57,11 +57,61 @@ pub enum Command {
         id: i64,
     },
 
+    /// Manage keys.
+    Key {
+        /// Show one key by name. Omit to list keys.
+        name: Option<String>,
+
+        #[command(subcommand)]
+        command: Option<KeyCommand>,
+    },
+
     /// Manage tags and their hierarchy.
     Tag {
         #[command(subcommand)]
         command: TagCommand,
     },
+}
+
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum Cardinality {
+    Single,
+    Multi,
+}
+
+impl Cardinality {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Single => "single",
+            Self::Multi => "multi",
+        }
+    }
+}
+
+#[derive(Debug, Subcommand)]
+pub enum KeyCommand {
+    /// Create a key.
+    Add {
+        name: String,
+
+        #[arg(long, value_enum, default_value_t = Cardinality::Single)]
+        cardinality: Cardinality,
+    },
+
+    /// Edit a key.
+    Edit {
+        name: String,
+
+        #[arg(long = "name", value_name = "NEW_NAME")]
+        new_name: Option<String>,
+
+        #[arg(long, value_enum)]
+        cardinality: Option<Cardinality>,
+    },
+
+    /// Delete a key.
+    Delete { name: String },
 }
 
 #[derive(Debug, Subcommand)]
@@ -118,6 +168,20 @@ mod tests {
         ])
         .is_ok());
         assert!(Cli::try_parse_from(["rinut", "edit", "1", "--set", "topic=vulkan"]).is_err());
+    }
+
+    #[test]
+    fn key_commands_parse() {
+        assert!(Cli::try_parse_from(["rinut", "key"]).is_ok());
+        assert!(Cli::try_parse_from(["rinut", "key", "Source"]).is_ok());
+        assert!(Cli::try_parse_from([
+            "rinut", "key", "add", "Field", "--cardinality", "multi"
+        ])
+        .is_ok());
+        assert!(Cli::try_parse_from([
+            "rinut", "key", "edit", "Source", "--name", "Origin"
+        ])
+        .is_ok());
     }
 
     #[test]
